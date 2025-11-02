@@ -387,18 +387,36 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
 
   console.log(allTransactions);
 
-  // Use the raw usersGraph instead of minCashGraph to show direct splits without simplification
-  const simplifiedGraph = usersGraph;
+  // Net out reverse transactions between users
+  const nettedGraph = {} as Record<string, Record<string, number>>;
 
-  console.log(simplifiedGraph);
+  Object.keys(groupMembers).forEach((fromId) => {
+    nettedGraph[fromId] = {};
+    Object.keys(groupMembers).forEach((toId) => {
+      if (fromId !== toId) {
+        // Calculate net amount: what fromId owes toId minus what toId owes fromId
+        const fromOwesTo = usersGraph[fromId][toId] || 0;
+        const toOwesFrom = usersGraph[toId][fromId] || 0;
+        const netAmount = fromOwesTo - toOwesFrom;
+
+        // Only store positive amounts (debts)
+        nettedGraph[fromId][toId] = netAmount > 0 ? floorAmount(netAmount) : 0;
+      }
+    });
+  });
+
+  console.log(nettedGraph);
 
   const finalGraph = [] as GraphData[];
 
   group.members.forEach((member) => {
     const graph = { ...member, debts: [] } as GraphData;
 
-    Object.entries(simplifiedGraph[member.id] || {}).forEach(([toId, amount]) => {
-      graph.debts.push({ ...groupMembers[toId], amount });
+    Object.entries(nettedGraph[member.id] || {}).forEach(([toId, amount]) => {
+      // Only add debts that are greater than 0
+      if (amount > 0) {
+        graph.debts.push({ ...groupMembers[toId], amount });
+      }
     });
 
     if (graph.debts.length > 0) finalGraph.push(graph);
