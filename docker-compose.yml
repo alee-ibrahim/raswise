@@ -1,18 +1,43 @@
 services:
-  splitgram-app:
+  raswise-app:
     build:
       context: .
       dockerfile: Dockerfile
     user: "node"
     environment:
       - NODE_ENV=production
-      - TZ=Europe/Rome
+      - TZ=Indian/Maldives
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      raswise-mongo:
+        condition: service_started
+      cloudflared:
+        condition: service_started
     networks:
-      - cloudflared
+      - raswise-network
+
+  raswise-mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=raswise
+    volumes:
+      - raswise-mongo-data:/data/db
+    networks:
+      - raswise-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - raswise-network
 
 networks:
-  cloudflared:
-    external: true
+  raswise-network:
+    driver: bridge
+
+volumes:
+  raswise-mongo-data:

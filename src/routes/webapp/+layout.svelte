@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-  <title>SplitGram</title>
+  <title>RasWise</title>
 </svelte:head>
 
 {#if !loaded}

@@ -49,7 +49,7 @@
 </script>
 
 <StatusTitle title={group.title} icon="fluent-emoji:classical-building" />
-<StatusTitle title={paymentInformation.amount + " ¤"} subtitle={`${paymentInformation.from.first_name || ""} ${paymentInformation.from.last_name || ""}`} icon="fluent-emoji:money-bag" />
+<StatusTitle title={paymentInformation.amount.toString()} subtitle={`${paymentInformation.from.first_name || ""} ${paymentInformation.from.last_name || ""}`} icon="fluent-emoji:money-bag" />
 
 <div class="flex flex-col gap-3">
   <p class="hint">{$_("app.set_split_mode")}</p>
@@ -74,7 +74,7 @@
         hasValue={splitMode !== "equally" && member.selected}
         bind:value={member.amount}
         type="number"
-        placeholder={"__ " + (splitMode === "percentages" ? "%" : splitMode === "unequally" ? "¤" : splitMode === "shares" ? $_("shares") : "")}
+        placeholder={"__ " + (splitMode === "percentages" ? "%" : splitMode === "shares" ? $_("shares") : "")}
         name={`${member.first_name} ${member.last_name || ""}`}
         on:click={() => (member.selected = !member.selected)}
       />
@@ -83,7 +83,7 @@
 
   {#if splitMode === "unequally" || splitMode === "percentages" || splitMode === "shares"}
     <p class="hint">
-      {$_("total")}: {membersSplit.reduce((s, m) => (s += m.selected ? getNumber(m.amount) : 0), 0)}{splitMode === "unequally" ? " ¤" : splitMode === "percentages" ? "%" : ""}
+      {$_("total")}: {membersSplit.reduce((s, m) => (s += m.selected ? getNumber(m.amount) : 0), 0)}{splitMode === "percentages" ? "%" : ""}
     </p>
   {/if}
 

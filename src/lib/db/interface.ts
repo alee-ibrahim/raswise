@@ -387,7 +387,8 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
 
   console.log(allTransactions);
 
-  const simplifiedGraph = minCashGraph(usersGraph);
+  // Use the raw usersGraph instead of minCashGraph to show direct splits without simplification
+  const simplifiedGraph = usersGraph;
 
   console.log(simplifiedGraph);
 
