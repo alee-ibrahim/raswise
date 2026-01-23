@@ -280,61 +280,68 @@ export const getPayments = async (group: Group) => {
   return payments as TransactionData[];
 };
 
-function getMaxAndMin(amount: Record<string, number>) {
-  let maxIndex: string | null = null;
-  let minIndex: string | null = null;
-
-  Object.entries(amount).forEach(([index, value]) => {
-    if (maxIndex === null) maxIndex = index;
-    if (minIndex === null) minIndex = index;
-
-    if (value >= amount[maxIndex]) maxIndex = index;
-    if (value <= amount[minIndex]) minIndex = index;
-  });
-
-  return [maxIndex, minIndex];
-}
-
-function calculateMinCashGraph(amount: Record<string, number>, transactions = {} as Record<string, Record<string, number>>) {
-  const [mxCredit, mxDebit] = getMaxAndMin(amount);
-
-  if (!mxCredit || !mxDebit) return transactions;
-  
-
-  if (floorAmount(amount[mxCredit]) === 0 || floorAmount(amount[mxDebit]) === 0) return transactions;
-
-  const min = floorAmount(Math.min(-amount[mxDebit], amount[mxCredit]));
-
-  amount[mxCredit] -= min;
-  amount[mxDebit] += min;
-
-  if (!transactions[mxDebit]) transactions[mxDebit] = {};
-  if (!transactions[mxCredit]) transactions[mxCredit] = {};
-  transactions[mxDebit][mxCredit] = min;
-  transactions[mxCredit][mxDebit] = -min;
-
-  return calculateMinCashGraph(amount, transactions);
-}
-
-function minCashGraph(graph: Record<string, Record<string, number>>) {
-  const amount = {} as Record<string, number>;
-
-  console.log(graph)
-
-  Object.keys(graph).forEach((fromId) => {
-    amount[fromId] = amount[fromId] || 0;
-    Object.keys(graph).forEach((toId) => {
-      amount[fromId] += (graph[toId][fromId] || 0) - (graph[fromId][toId] || 0);
-    });
-  });
-
-  console.log(amount)
-
-  return calculateMinCashGraph(amount);
-}
-
 function floorAmount(amount: number) {
   return Math.round(amount * 100) / 100;
+}
+
+function hubBasedSimplify(graph: Record<string, Record<string, number>>) {
+  // Calculate net balance for each person (positive = owed money, negative = owes money)
+  const balances = {} as Record<string, number>;
+
+  Object.keys(graph).forEach((fromId) => {
+    balances[fromId] = balances[fromId] || 0;
+    Object.keys(graph).forEach((toId) => {
+      balances[fromId] += (graph[toId][fromId] || 0) - (graph[fromId][toId] || 0);
+    });
+    balances[fromId] = floorAmount(balances[fromId]);
+  });
+
+  console.log("Balances:", balances);
+
+  // Find creditors (owed money, positive balance) and debtors (owe money, negative balance)
+  const creditors = Object.entries(balances)
+    .filter(([_, bal]) => bal > 0)
+    .sort((a, b) => b[1] - a[1]); // Sort by amount descending
+
+  const debtors = Object.entries(balances)
+    .filter(([_, bal]) => bal < 0)
+    .sort((a, b) => a[1] - b[1]); // Sort by amount ascending (most negative first)
+
+  if (creditors.length === 0 || debtors.length === 0) {
+    return { transactions: {} as Record<string, Record<string, number>>, hub: null };
+  }
+
+  // Hub is the person owed the most
+  const [hubId, hubAmount] = creditors[0];
+  const otherCreditors = creditors.slice(1);
+
+  const transactions = {} as Record<string, Record<string, number>>;
+
+  // All debtors pay the hub
+  debtors.forEach(([debtorId, balance]) => {
+    const amount = floorAmount(-balance); // Convert negative to positive
+    if (amount > 0) {
+      if (!transactions[debtorId]) transactions[debtorId] = {};
+      transactions[debtorId][hubId] = amount;
+    }
+  });
+
+  // Hub pays other creditors
+  otherCreditors.forEach(([creditorId, balance]) => {
+    const amount = floorAmount(balance);
+    if (amount > 0) {
+      if (!transactions[hubId]) transactions[hubId] = {};
+      transactions[hubId][creditorId] = amount;
+    }
+  });
+
+  // Return hub info for the note (only if hub has to pass money to others)
+  const hubPassThrough = otherCreditors.map(([id, amount]) => ({ id, amount: floorAmount(amount) }));
+
+  return {
+    transactions,
+    hub: hubPassThrough.length > 0 ? { id: hubId, passThrough: hubPassThrough } : null
+  };
 }
 
 export const simplifyTransactions = async (group: Group, splits: TransactionData[] | null = null, payments: TransactionData[] | null = null) => {
@@ -387,7 +394,7 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
 
   console.log(allTransactions);
 
-  const simplifiedGraph = minCashGraph(usersGraph);
+  const { transactions: simplifiedGraph, hub } = hubBasedSimplify(usersGraph);
 
   const finalGraph = [] as GraphData[];
 
@@ -403,5 +410,17 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
     if (graph.debts.length > 0) finalGraph.push(graph);
   });
 
-  return finalGraph.sort((a, b) => a.first_name.localeCompare(b.first_name));
+  // Build hub info with user details for the note
+  const hubInfo = hub ? {
+    user: groupMembers[hub.id],
+    passThrough: hub.passThrough.map(p => ({
+      user: groupMembers[p.id],
+      amount: p.amount
+    }))
+  } : null;
+
+  return {
+    graph: finalGraph.sort((a, b) => a.first_name.localeCompare(b.first_name)),
+    hub: hubInfo
+  };
 };

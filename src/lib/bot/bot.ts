@@ -198,7 +198,9 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
 
   try {
     const group = await getGroupById(message.chat.id);
-    const graph = (await simplifyTransactions(group)) || [];
+    const result = await simplifyTransactions(group);
+    const graph = result?.graph || [];
+    const hub = result?.hub;
 
     let sendMessage = "*💰 SPLIT SUMMARY*\n";
 
@@ -215,6 +217,12 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
           }
         });
       });
+
+      // Add hub note if someone receives extra to pass on
+      if (hub && hub.passThrough.length > 0) {
+        const recipients = hub.passThrough.map(p => formatUser(p.user)).join(", ");
+        sendMessage += `\n\nℹ️ _${formatUser(hub.user)} receives extra to pass to ${recipients}_`;
+      }
     }
 
     return bot.sendMessage(message.chat.id, sendMessage, {
