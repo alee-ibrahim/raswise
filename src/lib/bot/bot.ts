@@ -213,7 +213,7 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
           // Only show debts where amount > 0 (person owes money)
           // This prevents showing the same debt twice
           if (d.amount > 0) {
-            sendMessage += `\n${formatUser(g)} 💸 ${pmd2(d.amount.toFixed(2))} ➜ ${formatUser(d)}`;
+            sendMessage += `\n${formatUser(g)} → ${formatUser(d)}: ${pmd2(d.amount.toFixed(2))}`;
           }
         });
       });
