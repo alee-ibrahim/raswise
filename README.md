@@ -11,6 +11,14 @@
 - Members are automatically added when they join or send messages;
 - Use the /app command to launch the webapp and manage expenses and splits.
 
+## ✨ Features
+
+- **Smart Debt Simplification** - Minimizes transactions so each person only makes one payment
+- **Hub-based Settlement** - The person owed the most collects payments and redistributes
+- **Clean Split Summary** - Easy to read format showing who pays whom
+- **Multi-language Support** - English and Italian translations
+- **Telegram Web App** - Full-featured expense management interface
+
 ## Run on custom server
 
 ### 1. Set up Cloudflare Tunnel (Free)
