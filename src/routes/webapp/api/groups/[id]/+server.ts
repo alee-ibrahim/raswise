@@ -17,6 +17,10 @@ export const GET: RequestHandler = async ({ url, params }) => {
   try {
     group = await getGroupById(parseInt(params.id));
 
+    if (!group) {
+      return new Response("Group not found", { status: 404 });
+    }
+
     splits = await getSplits(group);
     payments = await getPayments(group);
 
@@ -24,7 +28,7 @@ export const GET: RequestHandler = async ({ url, params }) => {
     graph = result.graph;
     hubs = result.hubs;
   } catch (error) {
-    console.log(error);
+    console.error("GET /webapp/api/groups/[id] failed:", error);
     return new Response("", { status: 500 });
   }
 

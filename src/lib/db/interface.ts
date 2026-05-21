@@ -23,14 +23,28 @@ export const setGroupDefaultCurrency = async (groupId: number, currency: string)
 export const migrateGroupId = async (oldId: number, newId: number) => {
   if (oldId === newId) return;
 
-  const existingNew = await db.collection("groups").findOne({ id: newId });
-  if (existingNew) {
-    // New supergroup already tracked separately — drop the stale old record
-    // and repoint any orphaned splits/payments to the new id.
+  const oldDoc = await db.collection("groups").findOne({ id: oldId });
+  const newDoc = await db.collection("groups").findOne({ id: newId });
+
+  if (oldDoc && newDoc) {
+    // Both docs exist — merge old data into the new doc, then drop the old.
+    const mergedMembers = Array.from(new Set([...(oldDoc.members || []), ...(newDoc.members || [])]));
+    await db.collection("groups").updateOne(
+      { id: newId },
+      {
+        $set: {
+          members: mergedMembers,
+          defaultCurrency: newDoc.defaultCurrency || oldDoc.defaultCurrency,
+          type: "supergroup",
+        },
+      }
+    );
     await db.collection("groups").deleteOne({ id: oldId });
-  } else {
+  } else if (oldDoc && !newDoc) {
+    // Only old exists — rename its id to the new id.
     await db.collection("groups").updateOne({ id: oldId }, { $set: { id: newId, type: "supergroup" } });
   }
+  // If only newDoc exists, nothing to merge.
 
   await db.collection("splits").updateMany({ group: oldId }, { $set: { group: newId } });
   await db.collection("payments").updateMany({ group: oldId }, { $set: { group: newId } });
@@ -66,23 +80,10 @@ export const getGroupById = async (groupId: number) => {
             as: "members",
           },
         },
-        { $unwind: "$members" },
         {
-          $sort: {
-            "members.first_name": 1,
+          $addFields: {
+            members: { $sortArray: { input: "$members", sortBy: { first_name: 1 } } },
           },
-        },
-        {
-          $group: {
-            _id: "$_id",
-            member: { $first: "$$ROOT" },
-            members: {
-              $push: "$members",
-            },
-          },
-        },
-        {
-          $replaceRoot: { newRoot: { $mergeObjects: ["$member", { members: "$members" }] } },
         },
         { $limit: 1 },
       ])
@@ -379,7 +380,7 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
   splits = splits || ((await getSplits(group)) as TransactionData[]);
   payments = payments || ((await getPayments(group)) as TransactionData[]);
 
-  const groupMembers = group.members
+  const groupMembers = (group.members || [])
     .sort((a, b) => a.first_name.localeCompare(b.first_name))
     .reduce((g, m) => {
       g[m.id] = m;
@@ -438,7 +439,11 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
     });
 
     allTransactions.forEach((transaction) => {
-      usersGraph[transaction.from.id][transaction.to.id] += transaction.amount;
+      // Skip orphan transactions that reference users no longer in the group
+      // (can happen after a group's id changes or a member is removed).
+      const row = usersGraph[transaction.from.id];
+      if (!row || row[transaction.to.id] === undefined) return;
+      row[transaction.to.id] += transaction.amount;
     });
 
     const { transactions: simplifiedGraph, hub } = hubBasedSimplify(usersGraph);
@@ -462,7 +467,7 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
   });
 
   const finalGraph = [] as GraphData[];
-  group.members.forEach((member) => {
+  (group.members || []).forEach((member) => {
     const debts = debtsByMember[member.id];
     if (debts && debts.length > 0) {
       finalGraph.push({ ...member, debts });
