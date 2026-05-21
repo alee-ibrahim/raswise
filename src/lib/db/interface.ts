@@ -8,6 +8,22 @@ export const registerGroup = async (chat: TelegramBot.Chat) => {
   await db.collection("groups").updateOne({ id: chat.id }, { $set: chat }, { upsert: true });
 };
 
+export const migrateGroupId = async (oldId: number, newId: number) => {
+  if (oldId === newId) return;
+
+  const existingNew = await db.collection("groups").findOne({ id: newId });
+  if (existingNew) {
+    // New supergroup already tracked separately — drop the stale old record
+    // and repoint any orphaned splits/payments to the new id.
+    await db.collection("groups").deleteOne({ id: oldId });
+  } else {
+    await db.collection("groups").updateOne({ id: oldId }, { $set: { id: newId, type: "supergroup" } });
+  }
+
+  await db.collection("splits").updateMany({ group: oldId }, { $set: { group: newId } });
+  await db.collection("payments").updateMany({ group: oldId }, { $set: { group: newId } });
+};
+
 export const registerUserInGroup = async (user: TelegramBot.User, chat: TelegramBot.Chat) => {
   await db.collection("users").createIndex("id", { unique: true });
 
@@ -296,8 +312,6 @@ function hubBasedSimplify(graph: Record<string, Record<string, number>>) {
     balances[fromId] = floorAmount(balances[fromId]);
   });
 
-  console.log("Balances:", balances);
-
   // Find creditors (owed money, positive balance) and debtors (owe money, negative balance)
   const creditors = Object.entries(balances)
     .filter(([_, bal]) => bal > 0)
@@ -366,8 +380,6 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
 
   const allTransactions = [] as TransactionGraph[];
 
-  console.log(splits)
-
   splits.forEach((split) => {
     const sumShares = split.mode === "shares" ? split.splits?.reduce((t, u) => (t += u.selected ? u.amount || 0 : 0), 0) || 0 : 0;
     const totalSplits = split.splits?.length || 0;
@@ -391,8 +403,6 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
   allTransactions.forEach((transaction) => {
     usersGraph[transaction.from.id][transaction.to.id] += transaction.amount;
   });
-
-  console.log(allTransactions);
 
   const { transactions: simplifiedGraph, hub } = hubBasedSimplify(usersGraph);
 

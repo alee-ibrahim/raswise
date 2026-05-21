@@ -1,7 +1,7 @@
 import { env } from "$env/dynamic/private";
 import TelegramBot from "node-telegram-bot-api";
 import { translate } from "../i18n/i18n";
-import { getGroupById, groupMembers, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
+import { getGroupById, groupMembers, migrateGroupId, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
 import { formatUser, memberToList, pmd2 } from "./utils";
 
 const BOT_TOKEN = env.BOT_TOKEN;
@@ -11,6 +11,40 @@ if (!BOT_TOKEN) throw new Error("BOT_TOKEN is not set");
 if (!BASE_HOST) throw new Error("BASE_HOST is not set");
 
 export const bot = new TelegramBot(BOT_TOKEN);
+
+// Telegram returns 400 "group chat was upgraded to a supergroup chat" with the
+// new chat id in response.body.parameters.migrate_to_chat_id. Migrate the
+// stored group and retry once. Any other error is rethrown for the caller.
+const extractMigrateId = (error: any): number | null => {
+  const body = error?.response?.body;
+  if (!body) return null;
+  try {
+    const parsed = typeof body === "string" ? JSON.parse(body) : body;
+    const id = parsed?.parameters?.migrate_to_chat_id;
+    return typeof id === "number" ? id : null;
+  } catch {
+    return null;
+  }
+};
+
+const safeSendMessage: typeof bot.sendMessage = async (chatId, text, options) => {
+  try {
+    return await bot.sendMessage(chatId, text, options);
+  } catch (error: any) {
+    const newId = extractMigrateId(error);
+    if (newId && typeof chatId === "number") {
+      console.log(`Group ${chatId} upgraded to supergroup ${newId}, migrating…`);
+      await migrateGroupId(chatId, newId);
+      return await bot.sendMessage(newId, text, options);
+    }
+    throw error;
+  }
+};
+
+// Don't let a single Telegram/API rejection crash the bot process.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
 
 let botUsername = "";
 bot.getMe().then((me) => {
@@ -151,7 +185,7 @@ bot.onText(/\/start|\/setup|\/app/, async (message) => {
 
     const members = (await groupMembers(message.chat)) || [];
 
-    return bot.sendMessage(
+    return safeSendMessage(
       message.chat.id,
       translate(languageCode, "bot.group.registered", {
         members: members.map((m: TelegramBot.User) => memberToList(m)).join("\n"),
@@ -225,7 +259,7 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
       }
     }
 
-    return bot.sendMessage(message.chat.id, sendMessage, {
+    return safeSendMessage(message.chat.id, sendMessage, {
       parse_mode: "MarkdownV2",
       reply_markup: GROUP_ACTIONS_KEYBOARD(languageCode, botUsername),
     });
@@ -233,6 +267,20 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
     sendError(message.chat.id, languageCode, error);
   }
 }
+
+// Telegram sends a service message in the *old* chat when a group is upgraded.
+// Migrate proactively so the next send doesn't hit the 400.
+bot.on("migrate_to_chat_id", async (message) => {
+  const newId = (message as any).migrate_to_chat_id;
+  if (typeof newId === "number") {
+    try {
+      await migrateGroupId(message.chat.id, newId);
+      console.log(`Migrated group ${message.chat.id} → ${newId}`);
+    } catch (error) {
+      console.error("Group migration failed:", error);
+    }
+  }
+});
 
 bot.onText(/\/split/, async (message) => {
   sendSplitExpenses(message.from, message);
@@ -248,7 +296,7 @@ bot.onText(/\/addexpense|\/addsplit/, async (message) => {
   }
 
   try {
-    await bot.sendMessage(
+    await safeSendMessage(
       message.chat.id,
       translate(languageCode, "bot.add_split"),
       {
@@ -279,7 +327,7 @@ bot.onText(/\/addpayment/, async (message) => {
   }
 
   try {
-    await bot.sendMessage(
+    await safeSendMessage(
       message.chat.id,
       translate(languageCode, "bot.add_payment"),
       {
@@ -310,7 +358,7 @@ bot.onText(/\/list|\/transactions/, async (message) => {
   }
 
   try {
-    await bot.sendMessage(
+    await safeSendMessage(
       message.chat.id,
       translate(languageCode, "bot.list_transactions"),
       {
