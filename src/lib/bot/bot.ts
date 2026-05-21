@@ -55,6 +55,30 @@ export const setWebhook = async () => {
   return await bot.setWebHook(`${BASE_HOST}/bot`);
 };
 
+const BOT_COMMANDS = [
+  { command: "start", description: "Set up the bot in this group" },
+  { command: "addexpense", description: "Add a shared expense" },
+  { command: "addpayment", description: "Record a payment between members" },
+  { command: "split", description: "Show who owes whom" },
+  { command: "list", description: "Open the transactions list" },
+  { command: "setup", description: "Re-run the group setup" },
+  { command: "app", description: "Open the RasWise web app" },
+];
+
+export const setCommands = async () => {
+  // Show inside groups
+  await bot.setMyCommands(BOT_COMMANDS, { scope: { type: "all_group_chats" } });
+  // Show in private chats (subset that makes sense one-on-one)
+  await bot.setMyCommands(
+    [
+      { command: "start", description: "Open the RasWise web app" },
+      { command: "app", description: "Open the RasWise web app" },
+    ],
+    { scope: { type: "all_private_chats" } }
+  );
+  return BOT_COMMANDS;
+};
+
 export const getBotUsername = () => botUsername;
 
 function sendPrivateMessage(chatId: number, languageCode: string | undefined) {

@@ -1,4 +1,4 @@
-import { bot, setWebhook } from "$lib/bot/bot";
+import { bot, setCommands, setWebhook } from "$lib/bot/bot";
 import type { RequestHandler } from "./$types.js";
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -16,5 +16,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
   if (set <= 0) return new Response("", { status: 404 });
 
-  return Response.json(await setWebhook());
+  const webhook = await setWebhook();
+  const commands = await setCommands();
+
+  return Response.json({ webhook, commands });
 };
