@@ -89,7 +89,7 @@
     <button class="mt-4 w-full" use:ripple on:click={saveCurrency} disabled={!chosenCurrency || saving}>
       {saving ? "Saving…" : $_("continue")}
     </button>
-    <button class="mt-2 w-full delete" use:ripple on:click={cancelCurrency}>{$_("app.back") || "Back"}</button>
+    <button class="mt-2 w-full delete" use:ripple on:click={cancelCurrency}>Back</button>
   </div>
 {:else}
   <p class="mb-3 hint">{$_("app.select_group")}</p>
