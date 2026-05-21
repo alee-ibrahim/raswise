@@ -1,7 +1,7 @@
 import { env } from "$env/dynamic/private";
 import TelegramBot from "node-telegram-bot-api";
 import { translate } from "../i18n/i18n";
-import { findMigrationCandidates, getGroupById, groupMembers, migrateGroupId, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
+import { findMigrationCandidates, getGroupById, groupMembers, migrateGroupId, reconcileGroupMembers, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
 import { formatUser, memberToList, pmd2 } from "./utils";
 
 const BOT_TOKEN = env.BOT_TOKEN;
@@ -341,9 +341,6 @@ bot.onText(/\/repair/, async (message) => {
 
     const candidates = await findMigrationCandidates(message.chat, message.from.id);
 
-    if (candidates.length === 0) {
-      return safeSendMessage(message.chat.id, "Nothing to merge — no other group with this title was found.");
-    }
     if (candidates.length > 1) {
       const ids = candidates.map((c) => c.id).join(", ");
       return safeSendMessage(
@@ -352,13 +349,22 @@ bot.onText(/\/repair/, async (message) => {
       );
     }
 
-    const oldId = candidates[0].id as number;
-    await migrateGroupId(oldId, message.chat.id);
+    let mergedFrom: number | null = null;
+    if (candidates.length === 1) {
+      mergedFrom = candidates[0].id as number;
+      await migrateGroupId(mergedFrom, message.chat.id);
+    }
 
-    return safeSendMessage(
-      message.chat.id,
-      `✅ Merged old group ${oldId} into this chat. All members, splits and payments are restored.`
-    );
+    // Always reconcile members from existing splits/payments so any user
+    // referenced by a transaction is re-added to the group.members list.
+    const added = await reconcileGroupMembers(message.chat.id);
+
+    let reply = "";
+    if (mergedFrom !== null) reply += `✅ Merged old group ${mergedFrom} into this chat. `;
+    if (added > 0) reply += `Restored ${added} member${added === 1 ? "" : "s"} from existing transactions. `;
+    if (!reply) reply = "Nothing to fix — group already looks intact.";
+
+    return safeSendMessage(message.chat.id, reply.trim());
   } catch (error) {
     console.error("/repair failed:", error);
     return safeSendMessage(message.chat.id, "Repair failed — check the server logs.");

@@ -2,6 +2,50 @@ import type TelegramBot from "node-telegram-bot-api";
 import db from "./db";
 import { ObjectId } from "mongodb";
 
+export const reconcileGroupMembers = async (groupId: number) => {
+  // Collect every user id referenced by the group's splits and payments,
+  // then add any that aren't already in groups.members. Returns the count
+  // of users added.
+  const splitUsers = await db
+    .collection("splits")
+    .aggregate([
+      { $match: { group: groupId } },
+      {
+        $project: {
+          ids: {
+            $concatArrays: [["$from"], { $ifNull: [{ $map: { input: "$splits", as: "s", in: "$$s.user" } }, []] }],
+          },
+        },
+      },
+      { $unwind: "$ids" },
+      { $group: { _id: "$ids" } },
+    ])
+    .toArray();
+
+  const paymentUsers = await db
+    .collection("payments")
+    .aggregate([
+      { $match: { group: groupId } },
+      { $project: { ids: ["$from", "$to"] } },
+      { $unwind: "$ids" },
+      { $match: { ids: { $ne: null } } },
+      { $group: { _id: "$ids" } },
+    ])
+    .toArray();
+
+  const referenced = new Set<number>([...splitUsers.map((u) => u._id), ...paymentUsers.map((u) => u._id)]);
+  if (referenced.size === 0) return 0;
+
+  const existing = await db.collection("groups").findOne({ id: groupId }, { projection: { members: 1 } });
+  const have = new Set<number>(existing?.members || []);
+
+  const missing = [...referenced].filter((id) => !have.has(id));
+  if (missing.length === 0) return 0;
+
+  await db.collection("groups").updateOne({ id: groupId }, { $addToSet: { members: { $each: missing } } });
+  return missing.length;
+};
+
 export const findMigrationCandidates = async (chat: TelegramBot.Chat, userId: number) => {
   // Look for group docs with the same title where the requesting user is a member,
   // excluding the current chat id. Used to suggest a merge after a supergroup upgrade.
@@ -393,13 +437,24 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
   splits = splits || ((await getSplits(group)) as TransactionData[]);
   payments = payments || ((await getPayments(group)) as TransactionData[]);
 
-  const groupMembers = (group.members || [])
-    .sort((a, b) => a.first_name.localeCompare(b.first_name))
-    .reduce((g, m) => {
-      g[m.id] = m;
-
-      return g;
-    }, {} as Record<string, TelegramBot.User>);
+  // Derive the effective member set from group.members AND every user
+  // referenced by a split or payment. This keeps the algorithm correct even
+  // when the group doc's members array is incomplete (e.g. after a supergroup
+  // upgrade where /start only re-registered the admin).
+  const groupMembers = {} as Record<string, TelegramBot.User>;
+  (group.members || []).forEach((m) => {
+    if (m?.id) groupMembers[m.id] = m;
+  });
+  splits.forEach((s) => {
+    if (s.from?.id) groupMembers[s.from.id] = s.from;
+    s.splits?.forEach((u) => {
+      if (u?.id) groupMembers[u.id] = u as TelegramBot.User;
+    });
+  });
+  payments.forEach((p) => {
+    if (p.from?.id) groupMembers[p.from.id] = p.from;
+    if (p.to?.id) groupMembers[p.to.id] = p.to;
+  });
 
   const defaultCurrency = group.defaultCurrency || "USD";
 
