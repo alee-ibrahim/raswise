@@ -1,7 +1,7 @@
 import type { RequestHandler } from "./$types";
 import { addSplit } from "$lib/db/interface";
 import { formatUser, pmd2, verifyTelegram } from "$lib/bot/utils";
-import { bot, getBotUsername } from "$lib/bot/bot";
+import { getBotUsername, safeSendMessage } from "$lib/bot/bot";
 import { translate } from "$lib/i18n/i18n";
 
 export const POST: RequestHandler = async ({ url, request }) => {
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
   // Build detailed notification message
   let message = `*💰 NEW EXPENSE ADDED*\n\n`;
   message += `*Paid by:* ${formatUser(data.from)}\n`;
-  message += `*Amount:* ${pmd2(data.amount.toFixed(2))}\n`;
+  message += `*Amount:* ${pmd2(data.amount.toFixed(2))}${data.currency ? " " + pmd2(data.currency) : ""}\n`;
 
   if (data.description) {
     message += `*Description:* ${pmd2(data.description)}\n`;
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ url, request }) => {
 
   const botUsername = getBotUsername();
 
-  bot.sendMessage(
+  safeSendMessage(
     data.group.id,
     message,
     {

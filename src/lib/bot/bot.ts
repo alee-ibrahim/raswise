@@ -27,7 +27,7 @@ const extractMigrateId = (error: any): number | null => {
   }
 };
 
-const safeSendMessage: typeof bot.sendMessage = async (chatId, text, options) => {
+export const safeSendMessage: typeof bot.sendMessage = async (chatId, text, options) => {
   try {
     return await bot.sendMessage(chatId, text, options);
   } catch (error: any) {
@@ -234,29 +234,27 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
     const group = await getGroupById(message.chat.id);
     const result = await simplifyTransactions(group);
     const graph = result?.graph || [];
-    const hub = result?.hub;
+    const hubs = result?.hubs || [];
 
     let sendMessage = "*💰 SPLIT SUMMARY*\n";
 
     if (graph.length <= 0) {
       sendMessage = translate(languageCode, "bot.group.is_pair");
     } else {
-      // Collect all transactions (only show each debt once)
       graph.forEach((g) => {
         g.debts.forEach((d) => {
-          // Only show debts where amount > 0 (person owes money)
-          // This prevents showing the same debt twice
           if (d.amount > 0) {
-            sendMessage += `\n${formatUser(g)} → ${formatUser(d)}: ${pmd2(d.amount.toFixed(2))}`;
+            sendMessage += `\n${formatUser(g)} → ${formatUser(d)}: ${pmd2(d.amount.toFixed(2))} ${pmd2(d.currency)}`;
           }
         });
       });
 
-      // Add hub note if someone receives extra to pass on
-      if (hub && hub.passThrough.length > 0) {
-        const recipients = hub.passThrough.map(p => formatUser(p.user)).join(", ");
-        sendMessage += `\n\nℹ️ _${formatUser(hub.user)} receives extra to pass to ${recipients}_`;
-      }
+      hubs.forEach((hub) => {
+        if (hub.passThrough.length > 0) {
+          const recipients = hub.passThrough.map((p) => formatUser(p.user)).join(", ");
+          sendMessage += `\n\nℹ️ _${formatUser(hub.user)} receives extra ${pmd2(hub.currency)} to pass to ${recipients}_`;
+        }
+      });
     }
 
     return safeSendMessage(message.chat.id, sendMessage, {

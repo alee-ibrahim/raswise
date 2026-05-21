@@ -8,6 +8,18 @@ export const registerGroup = async (chat: TelegramBot.Chat) => {
   await db.collection("groups").updateOne({ id: chat.id }, { $set: chat }, { upsert: true });
 };
 
+export const setGroupDefaultCurrency = async (groupId: number, currency: string) => {
+  await db.collection("groups").updateOne({ id: groupId }, { $set: { defaultCurrency: currency } });
+
+  // Backfill any historical rows that don't already have a currency set.
+  await db
+    .collection("splits")
+    .updateMany({ group: groupId, currency: { $exists: false } }, { $set: { currency } });
+  await db
+    .collection("payments")
+    .updateMany({ group: groupId, currency: { $exists: false } }, { $set: { currency } });
+};
+
 export const migrateGroupId = async (oldId: number, newId: number) => {
   if (oldId === newId) return;
 
@@ -132,6 +144,7 @@ export const addSplit = async (data: TransactionData) => {
     from: data.from.id,
     description: data.description,
     amount: data.amount,
+    currency: data.currency,
     mode: data.mode,
     splits: data.splits?.filter((s) => s.selected).map((s) => ({ user: s.id, amount: data.mode === "equally" ? null : s.amount })),
   });
@@ -148,6 +161,7 @@ export const editSplit = async (id: string, data: TransactionData) => {
         from: data.from.id,
         description: data.description,
         amount: data.amount,
+        currency: data.currency,
         mode: data.mode,
         splits: data.splits?.filter((s) => s.selected).map((s) => ({ user: s.id, amount: data.mode === "equally" ? null : s.amount })),
       },
@@ -173,6 +187,7 @@ export const addPayment = async (data: TransactionData) => {
     from: data.from.id,
     to: data.to?.id,
     amount: data.amount,
+    currency: data.currency,
   });
 };
 
@@ -187,6 +202,7 @@ export const editPayment = async (id: string, data: TransactionData) => {
         from: data.from.id,
         to: data.to?.id,
         amount: data.amount,
+        currency: data.currency,
       },
     }
   );
@@ -226,6 +242,7 @@ export const getSplits = async (group: Group) => {
           date: 1,
           description: 1,
           amount: 1,
+          currency: 1,
           mode: 1,
           from: 1,
           splits: {
@@ -370,67 +387,90 @@ export const simplifyTransactions = async (group: Group, splits: TransactionData
       return g;
     }, {} as Record<string, TelegramBot.User>);
 
-  const usersGraph = {} as Record<string, Record<string, number>>;
-  Object.keys(groupMembers).forEach((fromId) => {
-    usersGraph[fromId] = {};
-    Object.keys(groupMembers).forEach((toId) => {
-      if (fromId !== toId) usersGraph[fromId][toId] = 0;
+  const defaultCurrency = group.defaultCurrency || "USD";
+
+  // Partition transactions by currency so each currency is settled independently.
+  const buckets = new Map<string, { splits: TransactionData[]; payments: TransactionData[] }>();
+  const bucketFor = (currency: string) => {
+    let b = buckets.get(currency);
+    if (!b) {
+      b = { splits: [], payments: [] };
+      buckets.set(currency, b);
+    }
+    return b;
+  };
+  splits.forEach((s) => bucketFor(s.currency || defaultCurrency).splits.push(s));
+  payments.forEach((p) => bucketFor(p.currency || defaultCurrency).payments.push(p));
+
+  const debtsByMember: Record<string, Debt[]> = {};
+  const hubInfos: Array<{ user: TelegramBot.User; currency: string; passThrough: { user: TelegramBot.User; amount: number }[] }> = [];
+
+  buckets.forEach(({ splits: cs, payments: cp }, currency) => {
+    const usersGraph = {} as Record<string, Record<string, number>>;
+    Object.keys(groupMembers).forEach((fromId) => {
+      usersGraph[fromId] = {};
+      Object.keys(groupMembers).forEach((toId) => {
+        if (fromId !== toId) usersGraph[fromId][toId] = 0;
+      });
     });
-  });
 
-  const allTransactions = [] as TransactionGraph[];
+    const allTransactions = [] as TransactionGraph[];
 
-  splits.forEach((split) => {
-    const sumShares = split.mode === "shares" ? split.splits?.reduce((t, u) => (t += u.selected ? u.amount || 0 : 0), 0) || 0 : 0;
-    const totalSplits = split.splits?.length || 0;
+    cs.forEach((split) => {
+      const sumShares = split.mode === "shares" ? split.splits?.reduce((t, u) => (t += u.selected ? u.amount || 0 : 0), 0) || 0 : 0;
+      const totalSplits = split.splits?.length || 0;
 
-    split.splits?.forEach((member) => {
-      const trans = { to: split.from, from: { ...member, selected: undefined, amount: undefined, user: undefined }, amount: 0 };
+      split.splits?.forEach((member) => {
+        const trans = { to: split.from, from: { ...member, selected: undefined, amount: undefined, user: undefined }, amount: 0, currency };
 
-      if (split.mode === "equally") trans.amount = split.amount / totalSplits;
-      else if (split.mode === "unequally") trans.amount = member.amount || 0;
-      else if (split.mode === "percentages") trans.amount = (split.amount * (member.amount || 0)) / 100;
-      else if (split.mode === "shares") trans.amount = (split.amount * (member.amount || 0)) / sumShares;
+        if (split.mode === "equally") trans.amount = split.amount / totalSplits;
+        else if (split.mode === "unequally") trans.amount = member.amount || 0;
+        else if (split.mode === "percentages") trans.amount = (split.amount * (member.amount || 0)) / 100;
+        else if (split.mode === "shares") trans.amount = (split.amount * (member.amount || 0)) / sumShares;
 
-      if (trans.from.id !== trans.to.id && trans.amount && trans.amount > 0) allTransactions.push(trans);
+        if (trans.from.id !== trans.to.id && trans.amount && trans.amount > 0) allTransactions.push(trans);
+      });
     });
-  });
 
-  payments.forEach((payment) => {
-    if (payment.to && payment.from.id !== payment.to?.id && payment.amount && payment.amount > 0) allTransactions.push({ to: payment.from, from: payment.to, amount: payment.amount });
-  });
+    cp.forEach((payment) => {
+      if (payment.to && payment.from.id !== payment.to?.id && payment.amount && payment.amount > 0)
+        allTransactions.push({ to: payment.from, from: payment.to, amount: payment.amount, currency });
+    });
 
-  allTransactions.forEach((transaction) => {
-    usersGraph[transaction.from.id][transaction.to.id] += transaction.amount;
-  });
+    allTransactions.forEach((transaction) => {
+      usersGraph[transaction.from.id][transaction.to.id] += transaction.amount;
+    });
 
-  const { transactions: simplifiedGraph, hub } = hubBasedSimplify(usersGraph);
+    const { transactions: simplifiedGraph, hub } = hubBasedSimplify(usersGraph);
+
+    Object.keys(simplifiedGraph).forEach((fromId) => {
+      Object.entries(simplifiedGraph[fromId]).forEach(([toId, amount]) => {
+        if (amount > 0) {
+          if (!debtsByMember[fromId]) debtsByMember[fromId] = [];
+          debtsByMember[fromId].push({ ...groupMembers[toId], amount: floorAmount(amount), currency });
+        }
+      });
+    });
+
+    if (hub) {
+      hubInfos.push({
+        user: groupMembers[hub.id],
+        currency,
+        passThrough: hub.passThrough.map((p) => ({ user: groupMembers[p.id], amount: p.amount })),
+      });
+    }
+  });
 
   const finalGraph = [] as GraphData[];
-
   group.members.forEach((member) => {
-    const graph = { ...member, debts: [] } as GraphData;
-
-    Object.entries(simplifiedGraph[member.id] || {}).forEach(([toId, amount]) => {
-      if (amount > 0) {
-        graph.debts.push({ ...groupMembers[toId], amount: floorAmount(amount) });
-      }
-    });
-
-    if (graph.debts.length > 0) finalGraph.push(graph);
+    const debts = debtsByMember[member.id];
+    if (debts && debts.length > 0) {
+      finalGraph.push({ ...member, debts });
+    }
   });
-
-  // Build hub info with user details for the note
-  const hubInfo = hub ? {
-    user: groupMembers[hub.id],
-    passThrough: hub.passThrough.map(p => ({
-      user: groupMembers[p.id],
-      amount: p.amount
-    }))
-  } : null;
 
   return {
     graph: finalGraph.sort((a, b) => a.first_name.localeCompare(b.first_name)),
-    hub: hubInfo
+    hubs: hubInfos,
   };
 };

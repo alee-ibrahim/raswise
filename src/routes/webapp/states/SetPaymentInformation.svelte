@@ -10,12 +10,17 @@
   import { getNumber, updateBackButton } from "$lib/webapp/utils";
   import { ripple } from "svelte-ripple-action";
   import Selector from "$lib/components/Selector.svelte";
+  import CurrencySelector from "$lib/components/CurrencySelector.svelte";
 
   let group = $stateStore.group as Group;
 
   const dispatch = createEventDispatcher();
 
+  const LAST_CURRENCY_KEY = `raswise:lastCurrency:${group?.id}`;
+  const lastUsedCurrency = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_CURRENCY_KEY) : null;
+
   let amount = $stateStore.paymentInformation?.amount.toString() || "";
+  let currency = $stateStore.paymentInformation?.currency || lastUsedCurrency || group?.defaultCurrency || "";
   let selectedFrom = group?.members.findIndex((m) => m.id === ($stateStore.paymentInformation?.from.id || $stateStore.user?.id));
   let selectedTo = group?.members.findIndex((m) => m.id === $stateStore.paymentInformation?.to?.id);
 
@@ -31,12 +36,18 @@
 
     if (isNaN(numAmount)) return $webAppStore?.showAlert($_("app.error.amount_nan"));
     if (numAmount <= 0) return $webAppStore?.showAlert($_("app.error.amount_negative"));
+    if (!currency) return $webAppStore?.showAlert("Please pick a currency");
+
+    try {
+      localStorage.setItem(LAST_CURRENCY_KEY, currency);
+    } catch {}
 
     stateStore.set({
       ...$stateStore,
       paymentInformation: {
         ...$stateStore.paymentInformation,
         amount: numAmount,
+        currency,
         from: memberFrom,
         to: memberTo,
       },
@@ -64,6 +75,9 @@
 <div class="flex flex-col gap-3">
   <p class="hint">{$_("amount")}</p>
   <FieldText name={$_("amount")} type="number" bind:value={amount} icon="tabler:currency" />
+
+  <p class="hint">Currency</p>
+  <CurrencySelector bind:value={currency} />
 
   <p class="hint">{$_("from")}</p>
   <Selector bind:value={selectedFrom} options={group.members.map((m, i) => ({ key: i, text: `${m.first_name} ${m.last_name || ""}`.trim() }))} />

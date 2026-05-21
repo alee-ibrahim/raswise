@@ -23,6 +23,7 @@ declare global {
     members: TelegramBot.User[];
     splits?: TransactionData[];
     payments?: TransactionData[];
+    defaultCurrency?: string;
   }
   interface UserData {
     user: TelegramBot.User;
@@ -33,6 +34,7 @@ declare global {
     id?: string;
     description?: string;
     amount: number;
+    currency?: string;
     from: TelegramBot.User;
     to?: TelegramBot.User;
   }
@@ -55,6 +57,7 @@ declare global {
     date: Date;
     description?: string;
     amount: number;
+    currency?: string;
     from: TelegramBot.User;
     to?: TelegramBot.User;
     mode?: SplitMode;
@@ -65,10 +68,12 @@ declare global {
     from: TelegramBot.User;
     to: TelegramBot.User;
     amount: number;
+    currency: string;
   }
 
   type Debt = TelegramBot.User & {
     amount: number;
+    currency: string;
   };
 
   interface GraphData extends TelegramBot.User {

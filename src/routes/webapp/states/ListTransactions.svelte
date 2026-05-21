@@ -47,6 +47,7 @@
         id: transaction._id,
         description: transaction.description,
         amount: transaction.amount,
+        currency: transaction.currency,
         from: transaction.from,
         to: transaction.to,
       },
@@ -88,7 +89,7 @@
           subtitle={$_("app.list.payment_paid", {
             nameFrom: transaction.from?.first_name + " " + (transaction.from?.last_name || ""),
             nameTo: transaction.to?.first_name + " " + (transaction.to?.last_name || ""),
-            amount: transaction.amount.toFixed(2),
+            amount: transaction.amount.toFixed(2) + (transaction.currency ? " " + transaction.currency : ""),
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
@@ -100,7 +101,7 @@
           name={transaction.description}
           subtitle={$_("app.list.paid_by", {
             name: transaction.from?.first_name + " " + (transaction.from?.last_name || ""),
-            amount: transaction.amount.toFixed(2),
+            amount: transaction.amount.toFixed(2) + (transaction.currency ? " " + transaction.currency : ""),
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
