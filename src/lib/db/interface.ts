@@ -2,6 +2,19 @@ import type TelegramBot from "node-telegram-bot-api";
 import db from "./db";
 import { ObjectId } from "mongodb";
 
+export const findMigrationCandidates = async (chat: TelegramBot.Chat, userId: number) => {
+  // Look for group docs with the same title where the requesting user is a member,
+  // excluding the current chat id. Used to suggest a merge after a supergroup upgrade.
+  return await db
+    .collection("groups")
+    .find({
+      id: { $ne: chat.id },
+      title: chat.title,
+      members: userId,
+    })
+    .toArray();
+};
+
 export const registerGroup = async (chat: TelegramBot.Chat) => {
   await db.collection("groups").createIndex("id", { unique: true });
 

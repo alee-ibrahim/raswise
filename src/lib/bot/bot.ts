@@ -1,7 +1,7 @@
 import { env } from "$env/dynamic/private";
 import TelegramBot from "node-telegram-bot-api";
 import { translate } from "../i18n/i18n";
-import { getGroupById, groupMembers, migrateGroupId, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
+import { findMigrationCandidates, getGroupById, groupMembers, migrateGroupId, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
 import { formatUser, memberToList, pmd2 } from "./utils";
 
 const BOT_TOKEN = env.BOT_TOKEN;
@@ -322,6 +322,47 @@ bot.on("migrate_to_chat_id", async (message) => {
 
 bot.onText(/\/split/, async (message) => {
   sendSplitExpenses(message.from, message);
+});
+
+// Manual rescue for the case where a group was upgraded to a supergroup
+// while the bot was offline and a fresh /start created a duplicate doc.
+// Type /repair in the new supergroup; the bot finds the old doc by title
+// (limited to chat admins) and merges its members + history into the
+// current chat id.
+bot.onText(/\/repair/, async (message) => {
+  if (message.chat.type === "private" || message.chat.type === "channel" || !message.from) return;
+
+  try {
+    const admins = await bot.getChatAdministrators(message.chat.id);
+    const isAdmin = admins.some((a) => a.user.id === message.from!.id);
+    if (!isAdmin) {
+      return safeSendMessage(message.chat.id, "Only chat admins can run /repair.");
+    }
+
+    const candidates = await findMigrationCandidates(message.chat, message.from.id);
+
+    if (candidates.length === 0) {
+      return safeSendMessage(message.chat.id, "Nothing to merge — no other group with this title was found.");
+    }
+    if (candidates.length > 1) {
+      const ids = candidates.map((c) => c.id).join(", ");
+      return safeSendMessage(
+        message.chat.id,
+        `Found ${candidates.length} candidates (${ids}). Please merge manually via mongo to avoid mistakes.`
+      );
+    }
+
+    const oldId = candidates[0].id as number;
+    await migrateGroupId(oldId, message.chat.id);
+
+    return safeSendMessage(
+      message.chat.id,
+      `✅ Merged old group ${oldId} into this chat. All members, splits and payments are restored.`
+    );
+  } catch (error) {
+    console.error("/repair failed:", error);
+    return safeSendMessage(message.chat.id, "Repair failed — check the server logs.");
+  }
 });
 
 // Command to add expense directly from group
