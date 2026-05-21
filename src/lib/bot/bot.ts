@@ -256,6 +256,22 @@ async function sendSplitExpenses(user: TelegramBot.User | undefined, message: Te
 
   try {
     const group = await getGroupById(message.chat.id);
+
+    if (!group?.defaultCurrency) {
+      return safeSendMessage(
+        message.chat.id,
+        "Please set a default currency for this group first \\— open the web app and pick one\\.",
+        {
+          parse_mode: "MarkdownV2",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "Open web app", web_app: { url: BASE_HOST + "/webapp/list" } }],
+            ],
+          },
+        }
+      );
+    }
+
     const result = await simplifyTransactions(group);
     const graph = result?.graph || [];
     const hubs = result?.hubs || [];
