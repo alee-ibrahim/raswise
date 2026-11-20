@@ -15,11 +15,11 @@
 
   const dispatch = createEventDispatcher();
 
-  let splitMode: SplitMode = $stateStore.splitInformation?.mode || "equally";
-  let membersSplit = group.members.map((m) => {
+  let splitMode: SplitMode = $state($stateStore.splitInformation?.mode || "equally");
+  let membersSplit = $state(group.members.map((m) => {
     const splitDataUser = $stateStore.splitInformation?.splits.find((u) => u.id === m.id);
     return { ...m, ...splitDataUser };
-  }) as UserSplit[];
+  }) as UserSplit[]);
 
   updateBackButton();
 
@@ -76,7 +76,7 @@
         type="number"
         placeholder={"__ " + (splitMode === "percentages" ? "%" : splitMode === "shares" ? $_("shares") : "")}
         name={`${member.first_name} ${member.last_name || ""}`}
-        on:click={() => (member.selected = !member.selected)}
+        onclick={() => (member.selected = !member.selected)}
       />
     {/each}
   </div>
@@ -87,5 +87,5 @@
     </p>
   {/if}
 
-  <button class="mt-3" use:ripple on:click={mainClick}>{$_("save")}</button>
+  <button class="mt-3" use:ripple onclick={mainClick}>{$_("save")}</button>
 </div>

@@ -2,9 +2,13 @@
   import { _ } from "$lib/i18n/i18n";
   import Icon from "@iconify/svelte";
 
-  export let title: string | undefined;
-  export let subtitle: string | null = null;
-  export let icon: string;
+  interface Props {
+    title: string | undefined;
+    subtitle?: string | null;
+    icon: string;
+  }
+
+  let { title, subtitle = null, icon }: Props = $props();
 </script>
 
 {#if title}

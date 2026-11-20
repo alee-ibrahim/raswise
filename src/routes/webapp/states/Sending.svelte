@@ -6,10 +6,14 @@
   import { onMount } from "svelte";
   import { stateStore, webAppStore } from "$lib/webapp/store";
 
-  let loading = true;
-  let error = false;
+  let loading = $state(true);
+  let error = $state(false);
 
-  export let type: "add-split" | "edit-split" | "add-payment" | "edit-payment" | "delete-payment" | "delete-split" = "add-split";
+  interface Props {
+    type?: "add-split" | "edit-split" | "add-payment" | "edit-payment" | "delete-payment" | "delete-split";
+  }
+
+  let { type = "add-split" }: Props = $props();
 
   updateBackButton();
 

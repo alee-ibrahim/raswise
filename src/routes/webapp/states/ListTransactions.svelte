@@ -11,9 +11,9 @@
 
   const dispatch = createEventDispatcher();
 
-  let loading = true;
+  let loading = $state(true);
 
-  let myDebts: Debt[] | undefined;
+  let myDebts: Debt[] | undefined = $state();
 
   onMount(async () => {
     updateBackButton();
@@ -93,7 +93,7 @@
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
-          on:click={() => editTransaction(transaction)}
+          onclick={() => editTransaction(transaction)}
         />
       {:else}
         <ListCard
@@ -105,7 +105,7 @@
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
-          on:click={() => editTransaction(transaction)}
+          onclick={() => editTransaction(transaction)}
         />
       {/if}
     {/each}

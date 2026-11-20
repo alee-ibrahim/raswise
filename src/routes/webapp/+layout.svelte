@@ -6,9 +6,14 @@
   import { stateStore, webAppStore } from "$lib/webapp/store";
   import { fadeOptions, resetBackButton, updateBackButton } from "$lib/webapp/utils";
   import Icon from "@iconify/svelte";
+  interface Props {
+    children?: import('svelte').Snippet;
+  }
 
-  let loaded = false;
-  let error = false;
+  let { children }: Props = $props();
+
+  let loaded = $state(false);
+  let error = $state(false);
 
   onMount(async () => {
     if (!$webAppStore) {
@@ -77,6 +82,6 @@
 
 {#if loaded && !error}
   <div class="max-w-screen-md p-3">
-    <slot />
+    {@render children?.()}
   </div>
 {/if}
