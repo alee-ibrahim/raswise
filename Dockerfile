@@ -1,18 +1,21 @@
 FROM node:26-alpine
 
+# Node 25+ no longer ships corepack, so install the pinned pnpm directly
+RUN npm install -g pnpm@12.21.0
+
 WORKDIR /app
 
 # Copy package files first (for better caching)
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies (cached if package files don't change)
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the code
 COPY . .
 
 # Build the app
-RUN npm run build
+RUN pnpm build
 
 EXPOSE 3000
 
