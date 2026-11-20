@@ -52,7 +52,7 @@ export const verifyTelegram = (data: string | null | undefined) => {
   const dataCheckString = arr.join("\n");
 
   const secretKey = crypto.createHmac("sha256", "WebAppData").update(env.BOT_TOKEN).digest();
-  const computedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+  const computedHash = crypto.createHmac("sha256", new Uint8Array(secretKey)).update(dataCheckString).digest("hex");
 
   const validTime = new Date().getTime() / 1000 - 60 * 60;
 

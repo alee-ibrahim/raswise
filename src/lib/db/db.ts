@@ -8,7 +8,7 @@ const mongoUri = env.MONGO_URI || "mongodb://localhost:27017/raswise";
 const client = new MongoClient(mongoUri);
 
 // Only connect if we're not in build mode
-let connectionPromise: Promise<void> | null = null;
+let connectionPromise: Promise<MongoClient> | null = null;
 if (env.MONGO_URI) {
 	connectionPromise = client.connect();
 }
