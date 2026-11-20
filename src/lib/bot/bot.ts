@@ -1,16 +1,16 @@
-import { env } from "$env/dynamic/private";
+import { building } from "$app/env";
+import { BOT_TOKEN, APP_HOST } from "$app/env/private";
 import TelegramBot from "node-telegram-bot-api";
 import { translate } from "../i18n/i18n";
 import { findMigrationCandidates, getGroupById, groupMembers, migrateGroupId, reconcileGroupMembers, registerGroup, registerUserInGroup, simplifyTransactions } from "../db/interface";
 import { formatUser, memberToList, pmd2 } from "./utils";
 
-const BOT_TOKEN = env.BOT_TOKEN;
-const BASE_HOST = env.APP_HOST;
+const BASE_HOST = APP_HOST;
 
-if (!BOT_TOKEN) throw new Error("BOT_TOKEN is not set");
-if (!BASE_HOST) throw new Error("BASE_HOST is not set");
+if (!building && !BOT_TOKEN) throw new Error("BOT_TOKEN is not set");
+if (!building && !BASE_HOST) throw new Error("BASE_HOST is not set");
 
-export const bot = new TelegramBot(BOT_TOKEN);
+export const bot = new TelegramBot(BOT_TOKEN ?? "");
 
 // Telegram returns 400 "group chat was upgraded to a supergroup chat" with the
 // new chat id in response.body.parameters.migrate_to_chat_id. Migrate the

@@ -1,12 +1,12 @@
 import type { RequestHandler } from "./$types";
-import { getGroupById, getPayments, getSplits, setGroupDefaultCurrency, simplifyTransactions } from "$lib/db/interface";
-import { verifyTelegram } from "$lib/bot/utils";
-import { env } from "$env/dynamic/private";
-import { getCurrency } from "$lib/data/currencies";
+import { getGroupById, getPayments, getSplits, setGroupDefaultCurrency, simplifyTransactions } from "#lib/db/interface.ts";
+import { verifyTelegram } from "#lib/bot/utils.ts";
+import { DEBUG } from "$app/env/private";
+import { getCurrency } from "#lib/data/currencies.ts";
 
 export const GET: RequestHandler = async ({ url, params }) => {
   const { valid } = verifyTelegram(url.searchParams.get("login"));
-  if (!valid && parseInt(env.DEBUG || '0') <= 0) return new Response("Unauthorized", { status: 418 });
+  if (!valid && parseInt(DEBUG || '0') <= 0) return new Response("Unauthorized", { status: 418 });
 
   let group;
   let splits;
@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url, params }) => {
 
 export const PATCH: RequestHandler = async ({ url, params, request }) => {
   const { valid } = verifyTelegram(url.searchParams.get("login"));
-  if (!valid && parseInt(env.DEBUG || "0") <= 0) return new Response("Unauthorized", { status: 418 });
+  if (!valid && parseInt(DEBUG || "0") <= 0) return new Response("Unauthorized", { status: 418 });
 
   let body: { defaultCurrency?: string };
   try {

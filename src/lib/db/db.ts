@@ -1,15 +1,15 @@
-import { env } from "$env/dynamic/private";
+import { MONGO_URI } from "$app/env/private";
 import { MongoClient } from "mongodb";
 
-// During build time, env.MONGO_URI might not be available
+// During build time, MONGO_URI might not be available
 // Only connect at runtime when the environment variable is present
-const mongoUri = env.MONGO_URI || "mongodb://localhost:27017/raswise";
+const mongoUri = MONGO_URI || "mongodb://localhost:27017/raswise";
 
 const client = new MongoClient(mongoUri);
 
 // Only connect if we're not in build mode
-let connectionPromise: Promise<void> | null = null;
-if (env.MONGO_URI) {
+let connectionPromise: Promise<MongoClient> | null = null;
+if (MONGO_URI) {
 	connectionPromise = client.connect();
 }
 

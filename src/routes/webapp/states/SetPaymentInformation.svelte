@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
 
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
   import type TelegramBot from "node-telegram-bot-api";
-  import { webAppStore, stateStore } from "$lib/webapp/store";
-  import FieldText from "$lib/components/FieldText.svelte";
+  import { webAppStore, stateStore } from "#lib/webapp/store.ts";
+  import FieldText from "#lib/components/FieldText.svelte";
   import { createEventDispatcher } from "svelte";
-  import { getNumber, updateBackButton } from "$lib/webapp/utils";
+  import { getNumber, updateBackButton } from "#lib/webapp/utils.ts";
   import { ripple } from "svelte-ripple-action";
-  import Selector from "$lib/components/Selector.svelte";
-  import CurrencySelector from "$lib/components/CurrencySelector.svelte";
+  import Selector from "#lib/components/Selector.svelte";
+  import CurrencySelector from "#lib/components/CurrencySelector.svelte";
 
   let group = $stateStore.group as Group;
 
@@ -19,10 +19,10 @@
   const LAST_CURRENCY_KEY = `raswise:lastCurrency:${group?.id}`;
   const lastUsedCurrency = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_CURRENCY_KEY) : null;
 
-  let amount = $stateStore.paymentInformation?.amount.toString() || "";
-  let currency = $stateStore.paymentInformation?.currency || lastUsedCurrency || group?.defaultCurrency || "";
-  let selectedFrom = group?.members.findIndex((m) => m.id === ($stateStore.paymentInformation?.from.id || $stateStore.user?.id));
-  let selectedTo = group?.members.findIndex((m) => m.id === $stateStore.paymentInformation?.to?.id);
+  let amount = $state($stateStore.paymentInformation?.amount.toString() || "");
+  let currency = $state($stateStore.paymentInformation?.currency || lastUsedCurrency || group?.defaultCurrency || "");
+  let selectedFrom = $state(group?.members.findIndex((m) => m.id === ($stateStore.paymentInformation?.from.id || $stateStore.user?.id)));
+  let selectedTo = $state(group?.members.findIndex((m) => m.id === $stateStore.paymentInformation?.to?.id));
 
   updateBackButton();
 
@@ -85,9 +85,9 @@
   <p class="hint">{$_("to")}</p>
   <Selector bind:value={selectedTo} options={group.members.map((m, i) => ({ key: i, text: `${m.first_name} ${m.last_name || ""}`.trim() }))} />
 
-  <button class="mt-3" use:ripple on:click={mainClick}>{$_("continue")}</button>
+  <button class="mt-3" use:ripple onclick={mainClick}>{$_("continue")}</button>
 
   {#if $stateStore.paymentInformation?.id}
-    <button class="-mt-1 delete" use:ripple on:click={deleteTransaction}>{$_("delete")}</button>
+    <button class="-mt-1 delete" use:ripple onclick={deleteTransaction}>{$_("delete")}</button>
   {/if}
 </div>

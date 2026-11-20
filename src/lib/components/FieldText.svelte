@@ -1,17 +1,31 @@
 <script lang="ts">
+
   import Icon from "@iconify/svelte";
 
-  export let type: string = "text";
-  export let value: string;
-  export let name: string;
-  export let icon: string | null = null;
+  interface Props {
+    type?: string;
+    value: string;
+    name: string;
+    icon?: string | null;
+    onclick?: (e: MouseEvent) => void;
+    onkeypress?: (e: KeyboardEvent) => void;
+  }
+
+  let {
+    type = "text",
+    value = $bindable(),
+    name,
+    icon = null,
+    onclick,
+    onkeypress
+  }: Props = $props();
 
   function typeAction(node: HTMLInputElement) {
     node.type = type;
   }
 </script>
 
-<div class="flex items-center gap-3" on:click role="textbox" tabindex="0" on:keypress>
+<div class="flex items-center gap-3" {onclick} role="textbox" tabindex="0" {onkeypress}>
   {#if icon}
     <Icon {icon} class="text-2xl opacity-80" />
   {/if}

@@ -1,19 +1,19 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
   import { createEventDispatcher, onMount } from "svelte";
-  import ListCard from "$lib/components/ListCard.svelte";
-  import { webAppStore, stateStore } from "$lib/webapp/store";
-  import LoadingCard from "$lib/components/LoadingCard.svelte";
+  import ListCard from "#lib/components/ListCard.svelte";
+  import { webAppStore, stateStore } from "#lib/webapp/store.ts";
+  import LoadingCard from "#lib/components/LoadingCard.svelte";
   import { fade } from "svelte/transition";
-  import { formatDate, updateBackButton } from "$lib/webapp/utils";
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
-  import GraphResume from "$lib/components/GraphResume.svelte";
+  import { formatDate, updateBackButton } from "#lib/webapp/utils.ts";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
+  import GraphResume from "#lib/components/GraphResume.svelte";
 
   const dispatch = createEventDispatcher();
 
-  let loading = true;
+  let loading = $state(true);
 
-  let myDebts: Debt[] | undefined;
+  let myDebts: Debt[] | undefined = $state();
 
   onMount(async () => {
     updateBackButton();
@@ -93,7 +93,7 @@
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
-          on:click={() => editTransaction(transaction)}
+          onclick={() => editTransaction(transaction)}
         />
       {:else}
         <ListCard
@@ -105,7 +105,7 @@
             date: formatDate(transaction.date),
           })}
           postIcon="ic:round-chevron-right"
-          on:click={() => editTransaction(transaction)}
+          onclick={() => editTransaction(transaction)}
         />
       {/if}
     {/each}

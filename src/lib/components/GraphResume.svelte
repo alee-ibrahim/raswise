@@ -1,14 +1,19 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
   import Icon from "@iconify/svelte";
   import { ripple } from "svelte-ripple-action";
 
-  export let debts: Debt[];
+  interface Props {
+    debts: Debt[];
+    onkeypress?: (e: KeyboardEvent) => void;
+  }
 
-  let expanded = false;
+  let { debts, onkeypress }: Props = $props();
+
+  let expanded = $state(false);
 
   // Group debts by currency so we can show one row per currency.
-  $: byCurrency = (() => {
+  let byCurrency = $derived((() => {
     const map = new Map<string, Debt[]>();
     for (const d of debts) {
       const c = d.currency || "";
@@ -20,19 +25,19 @@
       debts: ds,
       sum: ds.reduce((s, d) => (s += d.amount), 0),
     }));
-  })();
+  })());
 
   // Card colour: green if every currency nets ≤ 0, red if any currency owes money.
-  $: anyOwes = byCurrency.some((c) => c.sum > 0);
-  $: allSettled = byCurrency.every((c) => c.sum === 0);
+  let anyOwes = $derived(byCurrency.some((c) => c.sum > 0));
+  let allSettled = $derived(byCurrency.every((c) => c.sum === 0));
 </script>
 
 <div
   class={"p-3 flex flex-col text-white rounded-xl " + (allSettled ? "bg-neutral-500" : anyOwes ? "bg-red-500" : "bg-green-500")}
   use:ripple
-  on:click={() => (expanded = !expanded)}
+  onclick={() => (expanded = !expanded)}
   role="button"
-  on:keypress
+  {onkeypress}
   tabindex="0"
 >
   {#if allSettled}

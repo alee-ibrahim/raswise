@@ -1,6 +1,6 @@
 import type TelegramBot from "node-telegram-bot-api";
 import * as crypto from "crypto";
-import { env } from "$env/dynamic/private";
+import { BOT_TOKEN } from "$app/env/private";
 
 export const pmd2 = (text: string | undefined) => {
   if (!text) return "";
@@ -51,8 +51,8 @@ export const verifyTelegram = (data: string | null | undefined) => {
   arr.sort((a, b) => a.localeCompare(b));
   const dataCheckString = arr.join("\n");
 
-  const secretKey = crypto.createHmac("sha256", "WebAppData").update(env.BOT_TOKEN).digest();
-  const computedHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+  const secretKey = crypto.createHmac("sha256", "WebAppData").update(BOT_TOKEN ?? "").digest();
+  const computedHash = crypto.createHmac("sha256", new Uint8Array(secretKey)).update(dataCheckString).digest("hex");
 
   const validTime = new Date().getTime() / 1000 - 60 * 60;
 

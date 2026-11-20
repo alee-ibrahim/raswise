@@ -1,15 +1,19 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import Loading from "$lib/components/Loading.svelte";
-  import { _ } from "$lib/i18n/i18n";
-  import { resetBackButton, updateBackButton } from "$lib/webapp/utils";
+  import Loading from "#lib/components/Loading.svelte";
+  import { _ } from "#lib/i18n/i18n.ts";
+  import { resetBackButton, updateBackButton } from "#lib/webapp/utils.ts";
   import { onMount } from "svelte";
-  import { stateStore, webAppStore } from "$lib/webapp/store";
+  import { stateStore, webAppStore } from "#lib/webapp/store.ts";
 
-  let loading = true;
-  let error = false;
+  let loading = $state(true);
+  let error = $state(false);
 
-  export let type: "add-split" | "edit-split" | "add-payment" | "edit-payment" | "delete-payment" | "delete-split" = "add-split";
+  interface Props {
+    type?: "add-split" | "edit-split" | "add-payment" | "edit-payment" | "delete-payment" | "delete-split";
+  }
+
+  let { type = "add-split" }: Props = $props();
 
   updateBackButton();
 

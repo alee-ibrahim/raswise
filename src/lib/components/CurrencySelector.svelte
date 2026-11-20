@@ -1,12 +1,16 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import { CURRENCIES, getCurrency, type Currency } from "$lib/data/currencies";
+  import { CURRENCIES, getCurrency, type Currency } from "#lib/data/currencies.ts";
 
-  export let value: string = "";
-  export let placeholder: string = "Search currency…";
+  interface Props {
+    value?: string;
+    placeholder?: string;
+  }
 
-  let open = false;
-  let query = "";
+  let { value = $bindable(""), placeholder = "Search currency…" }: Props = $props();
+
+  let open = $state(false);
+  let query = $state("");
 
   function filterCurrencies(q: string): Currency[] {
     const norm = q.trim().toLowerCase();
@@ -19,8 +23,8 @@
     );
   }
 
-  $: selected = getCurrency(value);
-  $: filtered = filterCurrencies(query);
+  let selected = $derived(getCurrency(value));
+  let filtered = $derived(filterCurrencies(query));
 
   function pick(c: Currency) {
     value = c.code;
@@ -43,7 +47,7 @@
   <button
     type="button"
     class="w-full flex items-center justify-between gap-3 bg-neutral-500 dark:bg-white bg-opacity-5 dark:bg-opacity-5 border border-tg px-3 py-2 rounded-xl outline-none"
-    on:click={toggle}
+    onclick={toggle}
   >
     <span class="flex items-center gap-2 min-w-0">
       <Icon icon="tabler:currency" class="text-xl opacity-80 shrink-0" />
@@ -71,7 +75,7 @@
           <button
             type="button"
             class="w-full text-left px-3 py-2 flex items-center justify-between bg-transparent rounded-none {c.code === value ? 'bg-second' : ''}"
-            on:click={() => pick(c)}
+            onclick={() => pick(c)}
           >
             <span class="flex items-center gap-2 min-w-0">
               <span class="font-medium w-12 shrink-0">{c.code}</span>

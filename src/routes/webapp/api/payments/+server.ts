@@ -1,8 +1,8 @@
 import type { RequestHandler } from "./$types";
-import { addPayment } from "$lib/db/interface";
-import { formatUser, pmd2, verifyTelegram } from "$lib/bot/utils";
-import { getBotUsername, safeSendMessage } from "$lib/bot/bot";
-import { translate } from "$lib/i18n/i18n";
+import { addPayment } from "#lib/db/interface.ts";
+import { formatUser, pmd2, verifyTelegram } from "#lib/bot/utils.ts";
+import { getBotUsername, safeSendMessage } from "#lib/bot/bot.ts";
+import { translate } from "#lib/i18n/i18n.ts";
 
 export const POST: RequestHandler = async ({ url, request }) => {
   const { user, valid } = verifyTelegram(url.searchParams.get("login"));

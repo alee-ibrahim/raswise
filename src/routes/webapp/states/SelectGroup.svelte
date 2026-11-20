@@ -1,21 +1,21 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
   import { createEventDispatcher } from "svelte";
-  import ListCard from "$lib/components/ListCard.svelte";
-  import { webAppStore, stateStore } from "$lib/webapp/store";
-  import LoadingCard from "$lib/components/LoadingCard.svelte";
+  import ListCard from "#lib/components/ListCard.svelte";
+  import { webAppStore, stateStore } from "#lib/webapp/store.ts";
+  import LoadingCard from "#lib/components/LoadingCard.svelte";
   import { fade } from "svelte/transition";
-  import { updateBackButton } from "$lib/webapp/utils";
-  import CurrencySelector from "$lib/components/CurrencySelector.svelte";
+  import { updateBackButton } from "#lib/webapp/utils.ts";
+  import CurrencySelector from "#lib/components/CurrencySelector.svelte";
   import { ripple } from "svelte-ripple-action";
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
   const dispatch = createEventDispatcher();
 
-  let loading = true;
-  let pendingGroup: Group | null = null;
-  let chosenCurrency = "";
-  let saving = false;
+  let loading = $state(true);
+  let pendingGroup: Group | null = $state(null);
+  let chosenCurrency = $state("");
+  let saving = $state(false);
 
   webAppStore.subscribe(async () => {
     updateBackButton();
@@ -86,10 +86,10 @@
 
     <CurrencySelector bind:value={chosenCurrency} />
 
-    <button class="mt-4 w-full" use:ripple on:click={saveCurrency} disabled={!chosenCurrency || saving}>
+    <button class="mt-4 w-full" use:ripple onclick={saveCurrency} disabled={!chosenCurrency || saving}>
       {saving ? "Saving…" : $_("continue")}
     </button>
-    <button class="mt-2 w-full delete" use:ripple on:click={cancelCurrency}>Back</button>
+    <button class="mt-2 w-full delete" use:ripple onclick={cancelCurrency}>Back</button>
   </div>
 {:else}
   <p class="mb-3 hint">{$_("app.select_group")}</p>
@@ -97,7 +97,7 @@
   {#if !loading}
     <div class="flex flex-col gap-2" in:fade>
       {#each $stateStore.groups || [] as group}
-        <ListCard on:click={() => selectGroup(group)} icon="fluent-emoji:classical-building" name={group.title} />
+        <ListCard onclick={() => selectGroup(group)} icon="fluent-emoji:classical-building" name={group.title} />
       {/each}
     </div>
   {:else}

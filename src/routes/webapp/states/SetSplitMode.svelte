@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
 
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
-  import { stateStore, webAppStore } from "$lib/webapp/store";
+  import { stateStore, webAppStore } from "#lib/webapp/store.ts";
   import { createEventDispatcher } from "svelte";
-  import { getNumber, updateBackButton } from "$lib/webapp/utils";
-  import Selector from "$lib/components/Selector.svelte";
-  import ListCard from "$lib/components/ListCard.svelte";
+  import { getNumber, updateBackButton } from "#lib/webapp/utils.ts";
+  import Selector from "#lib/components/Selector.svelte";
+  import ListCard from "#lib/components/ListCard.svelte";
   import { ripple } from "svelte-ripple-action";
 
   let group = $stateStore.group as Group;
@@ -15,11 +15,11 @@
 
   const dispatch = createEventDispatcher();
 
-  let splitMode: SplitMode = $stateStore.splitInformation?.mode || "equally";
-  let membersSplit = group.members.map((m) => {
+  let splitMode: SplitMode = $state($stateStore.splitInformation?.mode || "equally");
+  let membersSplit = $state(group.members.map((m) => {
     const splitDataUser = $stateStore.splitInformation?.splits.find((u) => u.id === m.id);
     return { ...m, ...splitDataUser };
-  }) as UserSplit[];
+  }) as UserSplit[]);
 
   updateBackButton();
 
@@ -76,7 +76,7 @@
         type="number"
         placeholder={"__ " + (splitMode === "percentages" ? "%" : splitMode === "shares" ? $_("shares") : "")}
         name={`${member.first_name} ${member.last_name || ""}`}
-        on:click={() => (member.selected = !member.selected)}
+        onclick={() => (member.selected = !member.selected)}
       />
     {/each}
   </div>
@@ -87,5 +87,5 @@
     </p>
   {/if}
 
-  <button class="mt-3" use:ripple on:click={mainClick}>{$_("save")}</button>
+  <button class="mt-3" use:ripple onclick={mainClick}>{$_("save")}</button>
 </div>

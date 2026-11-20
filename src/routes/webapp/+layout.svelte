@@ -1,14 +1,19 @@
 <script lang="ts">
-  import Loading from "$lib/components/Loading.svelte";
+  import Loading from "#lib/components/Loading.svelte";
   import { fade } from "svelte/transition";
-  import { _, locale } from "$lib/i18n/i18n";
+  import { _, locale } from "#lib/i18n/i18n.ts";
   import { onMount } from "svelte";
-  import { stateStore, webAppStore } from "$lib/webapp/store";
-  import { fadeOptions, resetBackButton, updateBackButton } from "$lib/webapp/utils";
+  import { stateStore, webAppStore } from "#lib/webapp/store.ts";
+  import { fadeOptions, resetBackButton, updateBackButton } from "#lib/webapp/utils.ts";
   import Icon from "@iconify/svelte";
+  interface Props {
+    children?: import('svelte').Snippet;
+  }
 
-  let loaded = false;
-  let error = false;
+  let { children }: Props = $props();
+
+  let loaded = $state(false);
+  let error = $state(false);
 
   onMount(async () => {
     if (!$webAppStore) {
@@ -77,6 +82,6 @@
 
 {#if loaded && !error}
   <div class="max-w-screen-md p-3">
-    <slot />
+    {@render children?.()}
   </div>
 {/if}
