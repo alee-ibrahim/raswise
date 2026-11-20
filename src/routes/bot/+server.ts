@@ -1,4 +1,4 @@
-import { bot, setCommands, setWebhook } from "$lib/bot/bot";
+import { bot, setCommands, setWebhook } from "#lib/bot/bot.ts";
 import type { RequestHandler } from "./$types.js";
 
 export const POST: RequestHandler = async ({ request }) => {

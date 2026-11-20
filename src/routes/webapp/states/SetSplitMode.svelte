@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
 
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
-  import { stateStore, webAppStore } from "$lib/webapp/store";
+  import { stateStore, webAppStore } from "#lib/webapp/store.ts";
   import { createEventDispatcher } from "svelte";
-  import { getNumber, updateBackButton } from "$lib/webapp/utils";
-  import Selector from "$lib/components/Selector.svelte";
-  import ListCard from "$lib/components/ListCard.svelte";
+  import { getNumber, updateBackButton } from "#lib/webapp/utils.ts";
+  import Selector from "#lib/components/Selector.svelte";
+  import ListCard from "#lib/components/ListCard.svelte";
   import { ripple } from "svelte-ripple-action";
 
   let group = $stateStore.group as Group;

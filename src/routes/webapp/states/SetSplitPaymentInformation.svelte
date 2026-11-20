@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
 
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
   import type TelegramBot from "node-telegram-bot-api";
-  import { webAppStore, stateStore } from "$lib/webapp/store";
-  import FieldText from "$lib/components/FieldText.svelte";
+  import { webAppStore, stateStore } from "#lib/webapp/store.ts";
+  import FieldText from "#lib/components/FieldText.svelte";
   import { createEventDispatcher } from "svelte";
-  import { getNumber, updateBackButton } from "$lib/webapp/utils";
+  import { getNumber, updateBackButton } from "#lib/webapp/utils.ts";
   import { ripple } from "svelte-ripple-action";
-  import Selector from "$lib/components/Selector.svelte";
-  import CurrencySelector from "$lib/components/CurrencySelector.svelte";
+  import Selector from "#lib/components/Selector.svelte";
+  import CurrencySelector from "#lib/components/CurrencySelector.svelte";
 
   let group = $stateStore.group as Group;
 

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { fade } from "svelte/transition";
 
-  import { stateStore } from "$lib/webapp/store";
+  import { stateStore } from "#lib/webapp/store.ts";
   import SetSplitPaymentInformation from "../states/SetSplitPaymentInformation.svelte";
   import SelectGroup from "../states/SelectGroup.svelte";
-  import { fadeOptions, updateBackButton } from "$lib/webapp/utils";
+  import { fadeOptions, updateBackButton } from "#lib/webapp/utils.ts";
   import SetSplitMode from "../states/SetSplitMode.svelte";
   import Sending from "../states/Sending.svelte";
 

@@ -1,6 +1,6 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { verifyTelegram } from "$lib/bot/utils";
+import { verifyTelegram } from "#lib/bot/utils.ts";
 
 export const GET: RequestHandler = async ({ url }) => {
   const { valid, user } = verifyTelegram(url.searchParams.get("login"));

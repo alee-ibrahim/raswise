@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
   import { createEventDispatcher } from "svelte";
-  import ListCard from "$lib/components/ListCard.svelte";
-  import { webAppStore, stateStore } from "$lib/webapp/store";
-  import LoadingCard from "$lib/components/LoadingCard.svelte";
+  import ListCard from "#lib/components/ListCard.svelte";
+  import { webAppStore, stateStore } from "#lib/webapp/store.ts";
+  import LoadingCard from "#lib/components/LoadingCard.svelte";
   import { fade } from "svelte/transition";
-  import { updateBackButton } from "$lib/webapp/utils";
-  import CurrencySelector from "$lib/components/CurrencySelector.svelte";
+  import { updateBackButton } from "#lib/webapp/utils.ts";
+  import CurrencySelector from "#lib/components/CurrencySelector.svelte";
   import { ripple } from "svelte-ripple-action";
-  import StatusTitle from "$lib/components/StatusTitle.svelte";
+  import StatusTitle from "#lib/components/StatusTitle.svelte";
 
   const dispatch = createEventDispatcher();
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { _ } from "$lib/i18n/i18n";
+  import { _ } from "#lib/i18n/i18n.ts";
   import Icon from "@iconify/svelte";
   import { ripple } from "svelte-ripple-action";
 

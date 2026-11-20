@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
-  import { CURRENCIES, getCurrency, type Currency } from "$lib/data/currencies";
+  import { CURRENCIES, getCurrency, type Currency } from "#lib/data/currencies.ts";
 
   interface Props {
     value?: string;
